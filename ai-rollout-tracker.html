@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Rollout Tracker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f3f4f6; color: #111827; min-height: 100vh;
+  }
+  .app { max-width: 940px; margin: 0 auto; padding: 28px 20px; }
+
+  /* Setup banner */
+  .setup-banner {
+    background: #fffbeb; border: 1px solid #fcd34d; border-radius: 10px;
+    padding: 20px; margin-bottom: 24px;
+  }
+  .setup-banner h2 { font-size: 16px; color: #92400e; margin-bottom: 8px; }
+  .setup-banner p, .setup-banner li { font-size: 13px; color: #78350f; line-height: 1.6; }
+  .setup-banner ol { padding-left: 20px; margin: 8px 0; }
+  .setup-banner code {
+    background: #fef3c7; padding: 1px 5px; border-radius: 3px;
+    font-size: 12px; font-family: "SF Mono", Monaco, monospace;
+  }
+  .setup-banner .client-id-row {
+    display: flex; gap: 8px; margin-top: 12px; align-items: center;
+  }
+  .setup-banner input {
+    flex: 1; padding: 8px 10px; border-radius: 6px; border: 1px solid #d1d5db;
+    font-size: 13px; outline: none; font-family: "SF Mono", Monaco, monospace;
+  }
+  .setup-banner .dismiss {
+    font-size: 12px; color: #92400e; background: none; border: none;
+    cursor: pointer; text-decoration: underline; margin-top: 8px; display: inline-block;
+  }
+
+  /* Drive status bar */
+  .drive-bar {
+    display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+    margin-bottom: 16px; font-size: 13px;
+  }
+  .drive-bar .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .drive-bar .dot.connected { background: #22c55e; }
+  .drive-bar .dot.disconnected { background: #d1d5db; }
+  .drive-bar .status-text { flex: 1; color: #6b7280; }
+  .drive-bar .status-text strong { color: #111827; }
+  .drive-bar .btn-sm {
+    padding: 5px 12px; border-radius: 6px; border: 1px solid #d1d5db;
+    background: #fff; font-size: 12px; cursor: pointer; font-weight: 500;
+  }
+  .drive-bar .btn-sm.google {
+    background: #4285f4; color: #fff; border-color: #4285f4;
+  }
+  .drive-bar .btn-sm.google:hover { background: #3367d6; }
+
+  /* Header */
+  .header { margin-bottom: 24px; }
+  .header h1 { font-size: 28px; font-weight: 800; color: #1e1b4b; }
+  .header p { font-size: 14px; color: #6b7280; margin-top: 4px; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+    padding: 14px 16px; text-align: center;
+  }
+  .stat-value { font-size: 26px; font-weight: 800; }
+  .stat-label {
+    font-size: 11px; color: #9ca3af; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+
+  /* Toolbar */
+  .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .toolbar input[type="text"], .toolbar select {
+    padding: 8px 12px; border-radius: 8px; border: 1px solid #d1d5db;
+    font-size: 13px; outline: none; background: #fff;
+  }
+  .toolbar input[type="text"] { flex: 1; min-width: 180px; }
+  .btn {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #d1d5db;
+    background: #fff; font-size: 13px; cursor: pointer; font-weight: 500;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: #f9fafb; }
+  .btn-primary { background: #4338ca; color: #fff; border-color: #4338ca; }
+  .btn-primary:hover { background: #3730a3; }
+  .btn-danger { border-color: #fecaca; background: #fef2f2; color: #dc2626; }
+  .btn-add-child { border-color: #c7d2fe; background: #eef2ff; color: #4338ca; }
+  .btn-drive { border-color: #93c5fd; background: #eff6ff; color: #1d4ed8; }
+  .btn-drive:hover { background: #dbeafe; }
+
+  /* Category */
+  .category { margin-bottom: 24px; }
+  .category-header {
+    display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+    background: linear-gradient(135deg, #1e1b4b, #312e81);
+    border-radius: 10px; cursor: pointer; user-select: none;
+  }
+  .category-header .arrow { color: #a5b4fc; font-size: 14px; flex-shrink: 0; }
+  .category-header .name { flex: 1; font-size: 16px; font-weight: 700; color: #fff; }
+  .category-header .count { font-size: 12px; color: #c7d2fe; font-weight: 500; }
+  .category-header .delete-cat {
+    font-size: 11px; padding: 3px 8px; border-radius: 5px;
+    border: 1px solid rgba(255,255,255,0.2); background: transparent;
+    color: #c7d2fe; cursor: pointer;
+  }
+  .category-header input.cat-rename {
+    flex: 1; font-size: 16px; font-weight: 700; color: #fff;
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 6px; padding: 2px 8px; outline: none;
+  }
+  .category-body { margin-top: 8px; padding-left: 4px; }
+  .category-empty { padding: 20px; text-align: center; color: #9ca3af; font-size: 13px; }
+
+  /* Objective row */
+  .obj-row {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+    margin-bottom: 6px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .obj-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; cursor: pointer; transition: background 0.1s;
+  }
+  .obj-header:hover { background: #fafafa; }
+  .obj-header.expanded { background: #f9fafb; }
+  .obj-arrow { font-size: 12px; color: #9ca3af; width: 16px; text-align: center; flex-shrink: 0; }
+  .obj-depth-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: #9ca3af; font-weight: 600; flex-shrink: 0; width: 135px;
+  }
+  .obj-title-input {
+    flex: 1; border: none; outline: none; font-size: 14px; font-weight: 600;
+    color: #111827; background: transparent; min-width: 0;
+  }
+  .obj-children-count { font-size: 11px; color: #9ca3af; flex-shrink: 0; }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 2px 10px; border-radius: 999px; white-space: nowrap;
+  }
+  .status-not-started { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+  .status-in-progress { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .status-complete { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+  .status-on-hold { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+
+  /* Detail panel */
+  .obj-detail { padding: 0 14px 14px; border-top: 1px solid #f3f4f6; }
+  .obj-detail .fields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .obj-detail label { font-size: 12px; display: block; }
+  .obj-detail label span { color: #6b7280; font-weight: 500; }
+  .obj-detail select, .obj-detail input[type="date"], .obj-detail textarea {
+    display: block; width: 100%; margin-top: 4px; padding: 6px 8px;
+    border-radius: 6px; border: 1px solid #d1d5db; font-size: 13px;
+    font-family: inherit; background: #fff;
+  }
+  .obj-detail textarea { resize: vertical; }
+  .obj-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .obj-actions .btn { font-size: 12px; padding: 5px 12px; }
+
+  .btn-add-objective {
+    margin-top: 8px; font-size: 13px; padding: 8px 16px;
+    border-radius: 8px; border: 1px dashed #c7d2fe;
+    background: #eef2ff; color: #4338ca; cursor: pointer;
+    font-weight: 500; width: 100%;
+  }
+  .btn-add-objective:hover { background: #e0e7ff; }
+
+  .add-cat-row { display: flex; gap: 8px; margin-top: 8px; }
+  .add-cat-row input {
+    flex: 1; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid #d1d5db; font-size: 13px; outline: none;
+  }
+  .btn-add-category {
+    margin-top: 8px; font-size: 13px; padding: 10px 20px;
+    border-radius: 8px; border: 1px dashed #a5b4fc;
+    background: #eef2ff; color: #4338ca; cursor: pointer;
+    font-weight: 600; width: 100%;
+  }
+  .btn-add-category:hover { background: #e0e7ff; }
+
+  .tips {
+    margin-top: 32px; padding: 12px 16px; background: #fff;
+    border-radius: 8px; font-size: 12px; color: #9ca3af;
+    border: 1px solid #e5e7eb;
+  }
+  .tips strong { color: #6b7280; }
+
+  .autosave-indicator {
+    position: fixed; bottom: 16px; right: 16px;
+    padding: 8px 14px; border-radius: 8px;
+    font-size: 12px; font-weight: 500;
+    background: #dcfce7; color: #15803d; border: 1px solid #86efac;
+    opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; z-index: 100;
+  }
+  .autosave-indicator.visible { opacity: 1; }
+
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .obj-detail .fields { grid-template-columns: 1fr; }
+    .obj-depth-label { width: 90px; font-size: 9px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="app"></div>
+<div class="autosave-indicator" id="autosave">Saved</div>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+// ═══════════════════════════════════════════
+//  GOOGLE DRIVE INTEGRATION
+// ═══════════════════════════════════════════
+const DRIVE_FILE_NAME = "ai-rollout-tracker.json";
+const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
+const CLIENT_ID_KEY = "ai-tracker-gcp-client-id";
+const DRIVE_FILE_ID_KEY = "ai-tracker-drive-file-id";
+
+let gDrive = {
+  clientId: localStorage.getItem(CLIENT_ID_KEY) || "",
+  accessToken: null,
+  fileId: localStorage.getItem(DRIVE_FILE_ID_KEY) || null,
+  connected: false,
+  syncing: false,
+  lastSync: null,
+  tokenClient: null,
+};
+
+function driveSetClientId(id) {
+  gDrive.clientId = id.trim();
+  localStorage.setItem(CLIENT_ID_KEY, gDrive.clientId);
+}
+
+function driveInitTokenClient() {
+  if (!gDrive.clientId || typeof google === "undefined") return;
+  try {
+    gDrive.tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: gDrive.clientId,
+      scope: DRIVE_SCOPES,
+      callback: (response) => {
+        if (response.access_token) {
+          gDrive.accessToken = response.access_token;
+          gDrive.connected = true;
+          render();
+          // Auto-load from Drive on connect
+          driveLoad();
+        }
+      },
+      error_callback: (err) => {
+        console.error("OAuth error:", err);
+        gDrive.connected = false;
+        render();
+      },
+    });
+  } catch (e) {
+    console.error("Failed to init token client:", e);
+  }
+}
+
+function driveSignIn() {
+  if (!gDrive.clientId) {
+    alert("Please enter your Google Cloud Client ID first.");
+    return;
+  }
+  if (!gDrive.tokenClient) driveInitTokenClient();
+  if (gDrive.tokenClient) {
+    gDrive.tokenClient.requestAccessToken({ prompt: "consent" });
+  } else {
+    alert("Google Identity Services not loaded yet. Please refresh and try again.");
+  }
+}
+
+function driveSignOut() {
+  if (gDrive.accessToken) {
+    google.accounts.oauth2.revoke(gDrive.accessToken);
+  }
+  gDrive.accessToken = null;
+  gDrive.connected = false;
+  gDrive.lastSync = null;
+  render();
+}
+
+async function driveRequest(url, options = {}) {
+  const headers = { Authorization: "Bearer " + gDrive.accessToken, ...options.headers };
+  const resp = await fetch(url, { ...options, headers });
+  if (resp.status === 401) {
+    gDrive.connected = false;
+    gDrive.accessToken = null;
+    render();
+    alert("Google Drive session expired. Please sign in again.");
+    return null;
+  }
+  return resp;
+}
+
+async function driveFindFile() {
+  const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
+  const resp = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name,modifiedTime)`);
+  if (!resp) return null;
+  const data = await resp.json();
+  if (data.files && data.files.length > 0) {
+    gDrive.fileId = data.files[0].id;
+    localStorage.setItem(DRIVE_FILE_ID_KEY, gDrive.fileId);
+    return gDrive.fileId;
+  }
+  return null;
+}
+
+async function driveCreateFile(content) {
+  const metadata = { name: DRIVE_FILE_NAME, mimeType: "application/json" };
+  const form = new FormData();
+  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+  form.append("file", new Blob([content], { type: "application/json" }));
+
+  const resp = await driveRequest("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", {
+    method: "POST",
+    body: form,
+  });
+  if (!resp) return null;
+  const data = await resp.json();
+  gDrive.fileId = data.id;
+  localStorage.setItem(DRIVE_FILE_ID_KEY, gDrive.fileId);
+  return data.id;
+}
+
+async function driveUpdateFile(content) {
+  const resp = await driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${gDrive.fileId}?uploadType=media`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: content,
+  });
+  return resp && resp.ok;
+}
+
+async function driveReadFile() {
+  const resp = await driveRequest(`https://www.googleapis.com/drive/v3/files/${gDrive.fileId}?alt=media`);
+  if (!resp || !resp.ok) return null;
+  return resp.json();
+}
+
+async function driveSave() {
+  if (!gDrive.connected) return;
+  if (gDrive.syncing) return;
+  gDrive.syncing = true;
+  render();
+
+  try {
+    const content = JSON.stringify(state, null, 2);
+    if (gDrive.fileId) {
+      // Verify file still exists
+      const check = await driveRequest(`https://www.googleapis.com/drive/v3/files/${gDrive.fileId}?fields=id,trashed`);
+      if (check && check.ok) {
+        const meta = await check.json();
+        if (!meta.trashed) {
+          await driveUpdateFile(content);
+        } else {
+          gDrive.fileId = null;
+          localStorage.removeItem(DRIVE_FILE_ID_KEY);
+          await driveCreateFile(content);
+        }
+      } else {
+        gDrive.fileId = null;
+        localStorage.removeItem(DRIVE_FILE_ID_KEY);
+        await driveCreateFile(content);
+      }
+    } else {
+      // Try to find existing file first
+      const found = await driveFindFile();
+      if (found) {
+        await driveUpdateFile(content);
+      } else {
+        await driveCreateFile(content);
+      }
+    }
+    gDrive.lastSync = new Date();
+    showAutosave("Saved to Drive");
+  } catch (e) {
+    console.error("Drive save error:", e);
+    alert("Failed to save to Google Drive. Your data is still saved locally.");
+  } finally {
+    gDrive.syncing = false;
+    render();
+  }
+}
+
+async function driveLoad() {
+  if (!gDrive.connected) return;
+  if (gDrive.syncing) return;
+  gDrive.syncing = true;
+  render();
+
+  try {
+    if (!gDrive.fileId) {
+      await driveFindFile();
+    }
+    if (gDrive.fileId) {
+      const data = await driveReadFile();
+      if (data && data.categories && data.objectives) {
+        state = data;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        expandedObjs.clear();
+        collapsedCats.clear();
+        gDrive.lastSync = new Date();
+        showAutosave("Loaded from Drive");
+      }
+    } else {
+      // No file on Drive yet — save current state up
+      await driveSave();
+    }
+  } catch (e) {
+    console.error("Drive load error:", e);
+  } finally {
+    gDrive.syncing = false;
+    render();
+  }
+}
+
+// Debounced Drive save — triggers after local save
+let driveSaveTimer = null;
+function scheduleDriveSave() {
+  if (!gDrive.connected) return;
+  clearTimeout(driveSaveTimer);
+  driveSaveTimer = setTimeout(() => driveSave(), 3000); // 3 second debounce
+}
+
+
+// ═══════════════════════════════════════════
+//  CORE APP STATE
+// ═══════════════════════════════════════════
+const STORAGE_KEY = "ai-rollout-tracker-data";
+const STATUS_OPTIONS = ["Not Started", "In Progress", "Complete", "On Hold"];
+const STATUS_CLASS = {
+  "Not Started": "status-not-started",
+  "In Progress": "status-in-progress",
+  "Complete": "status-complete",
+  "On Hold": "status-on-hold",
+};
+const DEPTH_LABELS = ["Objective", "Sub-objective", "Sub-sub-objective", "Sub-sub-sub-objective"];
+
+let state = loadState();
+let expandedObjs = new Set();
+let collapsedCats = new Set();
+let editingCat = null;
+let showAddCat = false;
+let newCatName = "";
+let filterStatus = "All";
+let searchTerm = "";
+let setupDismissed = localStorage.getItem("ai-tracker-setup-dismissed") === "true";
+
+function defaultState() {
+  return {
+    categories: [
+      { id: "cat-1", name: "AI Overview" },
+      { id: "cat-2", name: "Use Case Explorations" },
+    ],
+    objectives: [],
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data.categories && data.objectives) return data;
+    }
+  } catch (e) {}
+  return defaultState();
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  showAutosave("Saved locally");
+  scheduleDriveSave();
+}
+
+function showAutosave(msg) {
+  const el = document.getElementById("autosave");
+  el.textContent = msg || "Saved";
+  el.classList.add("visible");
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove("visible"), 1500);
+}
+
+function genId() {
+  return "obj-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+}
+
+function newObjective(categoryId, parentId, depth) {
+  return {
+    id: genId(), categoryId, parentId: parentId || null, depth: depth || 0,
+    title: "", targetDate: "", scheduledDate: "",
+    status: "Not Started", commentary: "",
+  };
+}
+
+// ── Filtering ──
+function getFilteredObjectives() {
+  let result = state.objectives;
+  if (filterStatus !== "All") {
+    const ids = new Set();
+    result.forEach(o => {
+      if (o.status === filterStatus) {
+        let cur = o;
+        while (cur) { ids.add(cur.id); cur = result.find(p => p.id === cur.parentId); }
+      }
+    });
+    result = result.filter(o => ids.has(o.id));
+  }
+  if (searchTerm.trim()) {
+    const term = searchTerm.toLowerCase();
+    const ids = new Set();
+    result.forEach(o => {
+      if (o.title.toLowerCase().includes(term) || o.commentary.toLowerCase().includes(term)) {
+        let cur = o;
+        while (cur) { ids.add(cur.id); cur = result.find(p => p.id === cur.parentId); }
+      }
+    });
+    result = result.filter(o => ids.has(o.id));
+  }
+  return result;
+}
+
+// ── Actions ──
+function updateObj(id, field, value) {
+  const obj = state.objectives.find(o => o.id === id);
+  if (obj) { obj[field] = value; saveState(); render(); }
+}
+
+function deleteObj(id) {
+  const toRemove = new Set();
+  function collect(pid) {
+    toRemove.add(pid);
+    state.objectives.filter(o => o.parentId === pid).forEach(o => collect(o.id));
+  }
+  collect(id);
+  state.objectives = state.objectives.filter(o => !toRemove.has(o.id));
+  expandedObjs.delete(id);
+  saveState(); render();
+}
+
+function addObjective(categoryId) {
+  const obj = newObjective(categoryId, null, 0);
+  state.objectives.push(obj);
+  expandedObjs.add(obj.id);
+  saveState(); render();
+  setTimeout(() => {
+    const input = document.querySelector(`[data-obj-id="${obj.id}"] .obj-title-input`);
+    if (input) input.focus();
+  }, 50);
+}
+
+function addChild(parentId, categoryId, depth) {
+  const obj = newObjective(categoryId, parentId, depth);
+  state.objectives.push(obj);
+  expandedObjs.add(parentId);
+  expandedObjs.add(obj.id);
+  saveState(); render();
+  setTimeout(() => {
+    const input = document.querySelector(`[data-obj-id="${obj.id}"] .obj-title-input`);
+    if (input) input.focus();
+  }, 50);
+}
+
+function renameCategory(id, name) {
+  const cat = state.categories.find(c => c.id === id);
+  if (cat) { cat.name = name; saveState(); }
+}
+
+function deleteCategory(id) {
+  if (!confirm("Delete this category and all its objectives?")) return;
+  state.categories = state.categories.filter(c => c.id !== id);
+  state.objectives = state.objectives.filter(o => o.categoryId !== id);
+  saveState(); render();
+}
+
+function addCategory() {
+  if (!newCatName.trim()) return;
+  state.categories.push({ id: genId(), name: newCatName.trim() });
+  newCatName = ""; showAddCat = false;
+  saveState(); render();
+}
+
+// ── Export / Import ──
+function exportCSV() {
+  const rows = [];
+  const catMap = {};
+  state.categories.forEach(c => catMap[c.id] = c.name);
+  function ancestry(obj) {
+    const t = [];
+    let cur = obj;
+    while (cur) { t.unshift(cur.title || "(untitled)"); cur = state.objectives.find(o => o.id === cur.parentId); }
+    return t;
+  }
+  function walk(parentId, catId) {
+    state.objectives.filter(o => o.parentId === parentId && o.categoryId === catId).forEach(obj => {
+      const a = ancestry(obj);
+      rows.push([catMap[obj.categoryId]||"", obj.depth+1, a[0]||"", a[1]||"", a[2]||"", a[3]||"",
+        obj.status, obj.targetDate, obj.scheduledDate, obj.commentary]);
+      walk(obj.id, catId);
+    });
+  }
+  state.categories.forEach(c => walk(null, c.id));
+  const esc = v => { const s=String(v||""); return (s.includes(",")||s.includes('"')||s.includes("\n")) ? `"${s.replace(/"/g,'""')}"` : s; };
+  const hdr = ["Category","Level","Objective","Sub-Objective","Sub-Sub-Objective","Sub-Sub-Sub-Objective","Status","Target Date","Scheduled Date","Commentary"];
+  const csv = [hdr.join(","), ...rows.map(r => r.map(esc).join(","))].join("\n");
+  download(csv, "ai-rollout-tracker.csv", "text/csv");
+}
+
+function exportJSON() {
+  download(JSON.stringify(state, null, 2), "ai-rollout-tracker.json", "application/json");
+}
+
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.categories && data.objectives) {
+        state = data; saveState();
+        expandedObjs.clear(); collapsedCats.clear();
+        render();
+      }
+    } catch (err) { alert("Invalid file format."); }
+  };
+  reader.readAsText(file);
+}
+
+function download(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Render helpers ──
+function h(tag, attrs, ...children) {
+  const el = document.createElement(tag);
+  if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+    if (k === "className") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === "style" && typeof v === "object") Object.assign(el.style, v);
+    else el.setAttribute(k, v);
+  });
+  children.flat(Infinity).forEach(c => {
+    if (c == null) return;
+    el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  });
+  return el;
+}
+
+function renderObjective(obj, allFiltered) {
+  const children = allFiltered.filter(o => o.parentId === obj.id);
+  const isExpanded = expandedObjs.has(obj.id);
+  const canAddChild = obj.depth < 3;
+  const indent = obj.depth * 28;
+
+  const row = h("div", { className: "obj-row", "data-obj-id": obj.id, style: { marginLeft: indent + "px" } });
+
+  const header = h("div", {
+    className: "obj-header" + (isExpanded ? " expanded" : ""),
+    onClick: () => { isExpanded ? expandedObjs.delete(obj.id) : expandedObjs.add(obj.id); render(); }
+  },
+    h("span", { className: "obj-arrow" }, isExpanded ? "\u25BE" : "\u25B8"),
+    h("span", { className: "obj-depth-label" }, DEPTH_LABELS[obj.depth] || "Item"),
+    (() => {
+      const inp = h("input", {
+        className: "obj-title-input",
+        value: obj.title, placeholder: "Enter title...",
+        onClick: e => e.stopPropagation(),
+      });
+      inp.addEventListener("input", e => { obj.title = e.target.value; saveState(); });
+      return inp;
+    })(),
+    h("span", { className: "status-badge " + STATUS_CLASS[obj.status] }, obj.status),
+    children.length > 0 ? h("span", { className: "obj-children-count" }, children.length + " sub" + (children.length > 1 ? "s" : "")) : null
+  );
+  row.appendChild(header);
+
+  if (isExpanded) {
+    const detail = h("div", { className: "obj-detail" });
+    const fields = h("div", { className: "fields" });
+
+    const statusLabel = h("label", null, h("span", null, "Status"));
+    const sel = h("select", null, ...STATUS_OPTIONS.map(s => {
+      const opt = h("option", { value: s }, s);
+      if (s === obj.status) opt.selected = true;
+      return opt;
+    }));
+    sel.addEventListener("change", e => updateObj(obj.id, "status", e.target.value));
+    statusLabel.appendChild(sel);
+
+    const tdLabel = h("label", null, h("span", null, "Target Date"));
+    const tdInput = h("input", { type: "date", value: obj.targetDate });
+    tdInput.addEventListener("change", e => updateObj(obj.id, "targetDate", e.target.value));
+    tdLabel.appendChild(tdInput);
+
+    const sdLabel = h("label", null, h("span", null, "Scheduled Date"));
+    const sdInput = h("input", { type: "date", value: obj.scheduledDate });
+    sdInput.addEventListener("change", e => updateObj(obj.id, "scheduledDate", e.target.value));
+    sdLabel.appendChild(sdInput);
+
+    fields.append(statusLabel, tdLabel, sdLabel);
+    detail.appendChild(fields);
+
+    const cmtLabel = h("label", { style: { marginTop: "12px" } }, h("span", null, "Commentary"));
+    const ta = h("textarea", { rows: "3", placeholder: "Add notes, context, or updates..." });
+    ta.value = obj.commentary;
+    ta.addEventListener("input", e => { obj.commentary = e.target.value; saveState(); });
+    cmtLabel.appendChild(ta);
+    detail.appendChild(cmtLabel);
+
+    const actions = h("div", { className: "obj-actions" });
+    if (canAddChild) {
+      const childLabel = ["objective", "sub-objective", "sub-sub-objective"][obj.depth];
+      actions.appendChild(h("button", {
+        className: "btn btn-add-child",
+        onClick: () => addChild(obj.id, obj.categoryId, obj.depth + 1)
+      }, "+ Add Sub-" + childLabel));
+    }
+    actions.appendChild(h("button", {
+      className: "btn btn-danger", style: { marginLeft: "auto" },
+      onClick: () => { if (confirm("Delete this objective and all sub-items?")) deleteObj(obj.id); }
+    }, "Delete"));
+    detail.appendChild(actions);
+    row.appendChild(detail);
+  }
+
+  const fragment = document.createDocumentFragment();
+  fragment.appendChild(row);
+  if (isExpanded) {
+    children.forEach(child => fragment.appendChild(renderObjective(child, allFiltered)));
+  }
+  return fragment;
+}
+
+
+// ═══════════════════════════════════════════
+//  MAIN RENDER
+// ═══════════════════════════════════════════
+function render() {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+  const filtered = getFilteredObjectives();
+  const total = state.objectives.length;
+  const completed = state.objectives.filter(o => o.status === "Complete").length;
+  const inProgress = state.objectives.filter(o => o.status === "In Progress").length;
+  const onHold = state.objectives.filter(o => o.status === "On Hold").length;
+
+  // ── Setup banner (shown until client ID is set or dismissed) ──
+  if (!gDrive.clientId && !setupDismissed) {
+    const banner = h("div", { className: "setup-banner" });
+    banner.appendChild(h("h2", null, "Connect to Google Drive (one-time setup)"));
+    banner.appendChild(h("p", null, "To sync your tracker data to Google Drive, create a free OAuth Client ID:"));
+
+    const ol = h("ol", null,
+      h("li", null,
+        "Go to ",
+        (() => { const a = h("a", { href: "https://console.cloud.google.com/apis/credentials", target: "_blank" }, "Google Cloud Console \u2192 Credentials"); return a; })()
+      ),
+      h("li", null, 'Click "Create Credentials" \u2192 "OAuth client ID"'),
+      h("li", null, 'Choose "Web application" as the type'),
+      h("li", null,
+        "Under \"Authorized JavaScript origins\", add: ",
+        h("code", null, window.location.origin || "file://")
+      ),
+      h("li", null, "Copy the Client ID and paste it below")
+    );
+    banner.appendChild(ol);
+
+    const note = h("p", null, "");
+    note.innerHTML = '<strong>Note:</strong> You may also need to enable the <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank">Google Drive API</a> in your project and add your Google account as a test user under the OAuth consent screen.';
+    banner.appendChild(note);
+
+    const row = h("div", { className: "client-id-row" });
+    const inp = h("input", { placeholder: "Paste your Client ID here (e.g. 123456.apps.googleusercontent.com)" });
+    inp.addEventListener("input", e => driveSetClientId(e.target.value));
+    row.appendChild(inp);
+    row.appendChild(h("button", {
+      className: "btn btn-primary",
+      onClick: () => { driveInitTokenClient(); render(); }
+    }, "Save"));
+    banner.appendChild(row);
+
+    const dismiss = h("button", { className: "dismiss", onClick: () => {
+      setupDismissed = true;
+      localStorage.setItem("ai-tracker-setup-dismissed", "true");
+      render();
+    }}, "Skip for now \u2014 I\u2019ll use local storage only");
+    banner.appendChild(dismiss);
+
+    app.appendChild(banner);
+  }
+
+  // ── Drive status bar ──
+  const driveBar = h("div", { className: "drive-bar" });
+  if (gDrive.connected) {
+    driveBar.appendChild(h("span", { className: "dot connected" }));
+    const statusText = h("span", { className: "status-text" });
+    if (gDrive.syncing) {
+      statusText.innerHTML = "<strong>Google Drive:</strong> Syncing...";
+    } else if (gDrive.lastSync) {
+      statusText.innerHTML = "<strong>Google Drive:</strong> Connected \u00B7 Last sync " + gDrive.lastSync.toLocaleTimeString();
+    } else {
+      statusText.innerHTML = "<strong>Google Drive:</strong> Connected";
+    }
+    driveBar.appendChild(statusText);
+    driveBar.appendChild(h("button", { className: "btn-sm", onClick: () => driveSave() }, "Sync Now"));
+    driveBar.appendChild(h("button", { className: "btn-sm", onClick: () => driveLoad() }, "Pull from Drive"));
+    driveBar.appendChild(h("button", { className: "btn-sm", onClick: driveSignOut }, "Disconnect"));
+  } else {
+    driveBar.appendChild(h("span", { className: "dot disconnected" }));
+    const statusText = h("span", { className: "status-text" });
+    statusText.innerHTML = gDrive.clientId
+      ? "<strong>Google Drive:</strong> Not connected"
+      : "<strong>Google Drive:</strong> No Client ID configured";
+    driveBar.appendChild(statusText);
+    if (gDrive.clientId) {
+      driveBar.appendChild(h("button", { className: "btn-sm google", onClick: driveSignIn }, "Sign in with Google"));
+    } else if (setupDismissed) {
+      driveBar.appendChild(h("button", { className: "btn-sm", onClick: () => {
+        setupDismissed = false;
+        localStorage.removeItem("ai-tracker-setup-dismissed");
+        render();
+      }}, "Set up Drive"));
+    }
+  }
+  app.appendChild(driveBar);
+
+  // ── Header ──
+  app.appendChild(
+    h("div", { className: "header" },
+      h("h1", null, "AI Rollout Tracker"),
+      h("p", null, "Track objectives, timelines, and progress across your firm\u2019s AI initiative.")
+    )
+  );
+
+  // ── Stats ──
+  app.appendChild(
+    h("div", { className: "stats" },
+      ...[
+        { label: "Total", value: total, color: "#6366f1" },
+        { label: "In Progress", value: inProgress, color: "#2563eb" },
+        { label: "Complete", value: completed, color: "#16a34a" },
+        { label: "On Hold", value: onHold, color: "#d97706" },
+      ].map(s =>
+        h("div", { className: "stat-card" },
+          h("div", { className: "stat-value", style: { color: s.color } }, String(s.value)),
+          h("div", { className: "stat-label" }, s.label)
+        )
+      )
+    )
+  );
+
+  // ── Toolbar ──
+  const toolbar = h("div", { className: "toolbar" });
+  const searchInput = h("input", { type: "text", placeholder: "Search objectives...", value: searchTerm });
+  searchInput.addEventListener("input", e => { searchTerm = e.target.value; render(); });
+  toolbar.appendChild(searchInput);
+
+  const statusSel = h("select", null,
+    h("option", { value: "All" }, "All Statuses"),
+    ...STATUS_OPTIONS.map(s => {
+      const o = h("option", { value: s }, s);
+      if (s === filterStatus) o.selected = true;
+      return o;
+    })
+  );
+  statusSel.addEventListener("change", e => { filterStatus = e.target.value; render(); });
+  toolbar.appendChild(statusSel);
+
+  toolbar.appendChild(h("button", { className: "btn", onClick: exportCSV }, "Export CSV"));
+  toolbar.appendChild(h("button", { className: "btn", onClick: exportJSON }, "Save JSON"));
+
+  const loadLabel = h("label", { className: "btn", style: { cursor: "pointer" } }, "Load JSON");
+  const loadInput = h("input", { type: "file", accept: ".json", style: { display: "none" } });
+  loadInput.addEventListener("change", e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ""; });
+  loadLabel.appendChild(loadInput);
+  toolbar.appendChild(loadLabel);
+
+  app.appendChild(toolbar);
+
+  // ── Categories ──
+  state.categories.forEach(cat => {
+    const section = h("div", { className: "category" });
+    const isCollapsed = collapsedCats.has(cat.id);
+    const catObjs = filtered.filter(o => o.categoryId === cat.id);
+    const allCatObjs = state.objectives.filter(o => o.categoryId === cat.id);
+    const completedCat = allCatObjs.filter(o => o.status === "Complete").length;
+
+    const header = h("div", { className: "category-header" });
+    header.addEventListener("click", () => {
+      if (editingCat === cat.id) return;
+      isCollapsed ? collapsedCats.delete(cat.id) : collapsedCats.add(cat.id);
+      render();
+    });
+    header.appendChild(h("span", { className: "arrow" }, isCollapsed ? "\u25B8" : "\u25BE"));
+
+    if (editingCat === cat.id) {
+      const catInput = h("input", { className: "cat-rename", value: cat.name });
+      catInput.addEventListener("click", e => e.stopPropagation());
+      catInput.addEventListener("input", e => renameCategory(cat.id, e.target.value));
+      catInput.addEventListener("blur", () => { editingCat = null; render(); });
+      catInput.addEventListener("keydown", e => { if (e.key === "Enter") { editingCat = null; render(); } });
+      header.appendChild(catInput);
+      setTimeout(() => catInput.focus(), 50);
+    } else {
+      const nameEl = h("span", { className: "name" }, cat.name);
+      nameEl.addEventListener("dblclick", e => { e.stopPropagation(); editingCat = cat.id; render(); });
+      header.appendChild(nameEl);
+    }
+
+    header.appendChild(h("span", { className: "count" }, completedCat + "/" + allCatObjs.length + " complete"));
+    const delCatBtn = h("button", { className: "delete-cat" }, "\u2715");
+    delCatBtn.addEventListener("click", e => { e.stopPropagation(); deleteCategory(cat.id); });
+    header.appendChild(delCatBtn);
+    section.appendChild(header);
+
+    if (!isCollapsed) {
+      const body = h("div", { className: "category-body" });
+      const topLevel = catObjs.filter(o => o.parentId === null);
+      if (topLevel.length === 0) {
+        body.appendChild(h("div", { className: "category-empty" }, "No objectives yet. Add one below."));
+      } else {
+        topLevel.forEach(obj => body.appendChild(renderObjective(obj, filtered)));
+      }
+      body.appendChild(h("button", {
+        className: "btn-add-objective",
+        onClick: () => addObjective(cat.id)
+      }, "+ Add Objective"));
+      section.appendChild(body);
+    }
+    app.appendChild(section);
+  });
+
+  // ── Add category ──
+  if (showAddCat) {
+    const row = h("div", { className: "add-cat-row" });
+    const catNameInput = h("input", { placeholder: "Category name...", value: newCatName });
+    catNameInput.addEventListener("input", e => { newCatName = e.target.value; });
+    catNameInput.addEventListener("keydown", e => { if (e.key === "Enter") addCategory(); });
+    row.appendChild(catNameInput);
+    row.appendChild(h("button", { className: "btn btn-primary", onClick: addCategory }, "Add"));
+    row.appendChild(h("button", { className: "btn", onClick: () => { showAddCat = false; newCatName = ""; render(); } }, "Cancel"));
+    app.appendChild(row);
+    setTimeout(() => catNameInput.focus(), 50);
+  } else {
+    app.appendChild(h("button", {
+      className: "btn-add-category",
+      onClick: () => { showAddCat = true; render(); }
+    }, "+ Add New Category"));
+  }
+
+  // ── Tips ──
+  app.appendChild(h("div", { className: "tips" },
+    h("strong", null, "Tips: "),
+    "Click any objective to expand and edit. Double-click a category name to rename it. ",
+    gDrive.connected
+      ? "Changes auto-sync to Google Drive after 3 seconds. Use Sync Now to force an immediate save. "
+      : "Data auto-saves to your browser. Connect Google Drive above for cloud backup. ",
+    h("strong", null, "Export CSV"),
+    " for Excel."
+  ));
+}
+
+// ── Init ──
+render();
+// Init Google auth if client ID already saved
+window.addEventListener("load", () => {
+  setTimeout(() => {
+    if (gDrive.clientId) driveInitTokenClient();
+  }, 500);
+});
+</script>
+</body>
+</html>
