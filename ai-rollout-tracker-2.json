@@ -1,0 +1,128 @@
+{
+  "categories": [
+    {
+      "id": "cat-1",
+      "name": "AI Overview"
+    },
+    {
+      "id": "cat-2",
+      "name": "Use Case Explorations"
+    },
+    {
+      "id": "obj-1771771726804-5ryrhh",
+      "name": "Amazon Value Demonstration"
+    }
+  ],
+  "objectives": [
+    {
+      "id": "obj-1771811656598-rigtnp",
+      "categoryId": "cat-2",
+      "parentId": null,
+      "depth": 0,
+      "title": "Private Clients Use case",
+      "targetDate": "",
+      "scheduledDate": "",
+      "status": "Complete",
+      "commentary": "Explored first draft of revocable trust and will"
+    },
+    {
+      "id": "obj-1771811658084-yfmk7a",
+      "categoryId": "cat-1",
+      "parentId": null,
+      "depth": 0,
+      "title": "Australia Tax Kick-off",
+      "targetDate": "2026-03-11",
+      "scheduledDate": "",
+      "status": "In Progress",
+      "commentary": ""
+    },
+    {
+      "id": "obj-1771811697457-w4iuei",
+      "categoryId": "cat-1",
+      "parentId": "obj-1771811658084-yfmk7a",
+      "depth": 1,
+      "title": "Develop use case with Nicholas Rouse",
+      "targetDate": "",
+      "scheduledDate": "",
+      "status": "Not Started",
+      "commentary": "Consider tax warranties and indemnities"
+    },
+    {
+      "id": "obj-1771811803902-g3go74",
+      "categoryId": "cat-2",
+      "parentId": null,
+      "depth": 0,
+      "title": "ECB use case",
+      "targetDate": "",
+      "scheduledDate": "",
+      "status": "In Progress",
+      "commentary": "Meet with Sasha"
+    },
+    {
+      "id": "obj-1771811816379-a68z8r",
+      "categoryId": "cat-2",
+      "parentId": null,
+      "depth": 0,
+      "title": "Abu Dhabi use case",
+      "targetDate": "",
+      "scheduledDate": "",
+      "status": "Not Started",
+      "commentary": "EIPAF or PE use cases"
+    },
+    {
+      "id": "obj-1771811819003-sv121d",
+      "categoryId": "cat-1",
+      "parentId": null,
+      "depth": 0,
+      "title": "Abu Dhabi Kick-off",
+      "targetDate": "",
+      "scheduledDate": "",
+      "status": "Not Started",
+      "commentary": ""
+    },
+    {
+      "id": "obj-1771812424670-vo0bvs",
+      "categoryId": "obj-1771771726804-5ryrhh",
+      "parentId": null,
+      "depth": 0,
+      "title": "Check-in with Linda at appropriate time",
+      "targetDate": "",
+      "scheduledDate": "",
+      "status": "In Progress",
+      "commentary": ""
+    },
+    {
+      "id": "obj-1771812434750-n4jho9",
+      "categoryId": "obj-1771771726804-5ryrhh",
+      "parentId": null,
+      "depth": 0,
+      "title": "Identify other teams to meet with",
+      "targetDate": "",
+      "scheduledDate": "",
+      "status": "Not Started",
+      "commentary": ""
+    },
+    {
+      "id": "obj-1771812476001-3g0hlp",
+      "categoryId": "cat-2",
+      "parentId": null,
+      "depth": 0,
+      "title": "Americas M&A",
+      "targetDate": "",
+      "scheduledDate": "",
+      "status": "Not Started",
+      "commentary": ""
+    },
+    {
+      "id": "obj-1771812484958-r1ghxb",
+      "categoryId": "cat-2",
+      "parentId": null,
+      "depth": 0,
+      "title": "Americas Tax",
+      "targetDate": "",
+      "scheduledDate": "",
+      "status": "Not Started",
+      "commentary": ""
+    }
+  ]
+}
